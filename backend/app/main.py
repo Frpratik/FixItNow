@@ -13,7 +13,7 @@ from app.core.exceptions import (
     integrity_error_handler,
     global_exception_handler,
 )
-from app.api.routes import auth, categories, health, customer_bookings, websockets, mechanic
+from app.api.routes import auth, categories, health, customer_bookings, websockets, mechanic, admin
 
 from app.background.booking_monitor import booking_monitor
 
@@ -58,4 +58,5 @@ app.include_router(auth.router)
 app.include_router(categories.router)
 app.include_router(customer_bookings.router)
 app.include_router(mechanic.router)
+app.include_router(admin.router)
 app.include_router(websockets.router)
