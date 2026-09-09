@@ -8,7 +8,12 @@ from app.services.state_machine import transition_booking
 from app.core.exceptions import BookingStateError
 
 @pytest.mark.asyncio
-async def test_legal_lifecycle_transitions(db_session: AsyncSession, sample_customer: User, sample_category: ServiceCategory):
+async def test_legal_lifecycle_transitions(
+    db_session: AsyncSession,
+    sample_customer: User,
+    sample_mechanic: User,
+    sample_category: ServiceCategory
+):
     booking = Booking(
         customer_id=sample_customer.id,
         category_id=sample_category.id,
@@ -25,7 +30,7 @@ async def test_legal_lifecycle_transitions(db_session: AsyncSession, sample_cust
     assert booking.status == BookingStatus.BROADCASTING
 
     # BROADCASTING -> ACCEPTED
-    mechanic_id = uuid.uuid4()
+    mechanic_id = sample_mechanic.id
     booking.accepted_mechanic_id = mechanic_id
     await transition_booking(db_session, booking, BookingStatus.ACCEPTED, mechanic_id)
     assert booking.status == BookingStatus.ACCEPTED
