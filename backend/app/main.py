@@ -15,15 +15,18 @@ from app.core.exceptions import (
 )
 from app.api.routes import auth, categories, health, customer_bookings
 
+from app.background.booking_monitor import booking_monitor
+
 # Setup structured logging
 setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Starting FixItNow API in {settings.ENVIRONMENT} mode...")
-    # Background worker initialization will attach here in Phase 5
+    booking_monitor.start()
     yield
     logger.info("Shutting down FixItNow API...")
+    await booking_monitor.stop()
 
 app = FastAPI(
     title="FixItNow API",

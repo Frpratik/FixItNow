@@ -60,6 +60,10 @@ class BookingService:
 
         await db.commit()
 
+        # Trigger Wave 1 matching
+        from app.services.matching_service import MatchingService
+        await MatchingService.broadcast_wave_1(db=db, booking=booking)
+
         # Reload full details
         full_booking = await BookingService.get_booking_raw(db, booking.id)
         logger.info(
