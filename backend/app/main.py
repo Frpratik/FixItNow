@@ -23,10 +23,12 @@ setup_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Starting FixItNow API in {settings.ENVIRONMENT} mode...")
-    booking_monitor.start()
+    if not settings.TESTING:
+        booking_monitor.start()
     yield
     logger.info("Shutting down FixItNow API...")
-    await booking_monitor.stop()
+    if not settings.TESTING:
+        await booking_monitor.stop()
 
 app = FastAPI(
     title="FixItNow API",

@@ -1,11 +1,17 @@
 import asyncio
 import uuid
+import sys
+import os
 import pytest
 import pytest_asyncio
+
+# Ensure app is importable
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from typing import AsyncGenerator
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy import text
+from sqlalchemy.pool import NullPool
 
 from app.main import app
 from app.db.base import Base
@@ -15,15 +21,14 @@ from app.core.security import get_password_hash, create_access_token
 from app.db.models.user import User, UserRole
 from app.db.models.category import ServiceCategory
 from app.db.models.mechanic_profile import MechanicProfile
-from app.db.models.booking import Booking, BookingStatus
 
-# Use local test database URL or test schema
-TEST_DATABASE_URL = settings.DATABASE_URL
+settings.TESTING = True
 
 test_engine = create_async_engine(
-    TEST_DATABASE_URL,
+    settings.DATABASE_URL,
     echo=False,
     future=True,
+    poolclass=NullPool,
 )
 
 TestingSessionLocal = async_sessionmaker(
@@ -34,29 +39,25 @@ TestingSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
-@pytest_asyncio.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def prepare_database():
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    # Keep schema intact for test inspectability
-
 @pytest_asyncio.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with TestingSessionLocal() as session:
-        yield session
-        await session.rollback()
+        try:
+            yield session
+        finally:
+            await session.close()
 
 @pytest_asyncio.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def client() -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db():
-        yield db_session
+        async with TestingSessionLocal() as session:
+            try:
+                yield session
+            except Exception:
+                await session.rollback()
+                raise
+            finally:
+                await session.close()
 
     app.dependency_overrides[get_db] = override_get_db
     transport = ASGITransport(app=app)
@@ -83,7 +84,7 @@ async def sample_customer(db_session: AsyncSession) -> User:
     user = User(
         id=uid,
         name="Test Customer",
-        email=f"customer_{uid.hex[:6]}@test.local",
+        email=f"customer_{uid.hex[:6]}@example.com",
         phone=f"+9198{uid.hex[:8]}",
         password_hash=get_password_hash("Pass@123"),
         role=UserRole.CUSTOMER,
@@ -99,7 +100,7 @@ async def sample_mechanic(db_session: AsyncSession, sample_category: ServiceCate
     user = User(
         id=uid,
         name="Test Mechanic",
-        email=f"mechanic_{uid.hex[:6]}@test.local",
+        email=f"mechanic_{uid.hex[:6]}@example.com",
         phone=f"+9197{uid.hex[:8]}",
         password_hash=get_password_hash("Pass@123"),
         role=UserRole.MECHANIC,
@@ -129,7 +130,7 @@ async def sample_admin(db_session: AsyncSession) -> User:
     user = User(
         id=uid,
         name="Test Admin",
-        email=f"admin_{uid.hex[:6]}@test.local",
+        email=f"admin_{uid.hex[:6]}@example.com",
         phone=f"+9199{uid.hex[:8]}",
         password_hash=get_password_hash("Pass@123"),
         role=UserRole.ADMIN,

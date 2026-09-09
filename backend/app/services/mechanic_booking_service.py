@@ -30,14 +30,14 @@ class MechanicBookingService:
         Guarantees that when multiple mechanics attempt to accept simultaneously,
         exactly ONE succeeds and all others receive HTTP 409 Conflict.
         """
-        # Lock the booking row
+        # Lock the booking row cleanly without outer joins
         stmt = (
             select(Booking)
             .where(Booking.id == booking_id)
-            .with_for_update()
+            .with_for_update(of=Booking)
             .options(
-                joinedload(Booking.category),
-                joinedload(Booking.customer),
+                selectinload(Booking.category),
+                selectinload(Booking.customer),
                 selectinload(Booking.status_history),
                 selectinload(Booking.review),
                 selectinload(Booking.attempts),

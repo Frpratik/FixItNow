@@ -39,6 +39,7 @@ class User(Base, TimestampMixin):
         "MechanicProfile",
         back_populates="user",
         uselist=False,
+        lazy="selectin",
         cascade="all, delete-orphan"
     )
     customer_bookings: Mapped[List["Booking"]] = relationship(

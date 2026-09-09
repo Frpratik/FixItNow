@@ -18,24 +18,25 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Create enum types
-    user_role_enum = postgresql.ENUM('customer', 'mechanic', 'admin', name='user_role_enum', create_type=False)
-    user_role_enum.create(op.get_bind(), checkfirst=True)
+    # Create enum types idempotently
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role_enum') THEN
+                CREATE TYPE user_role_enum AS ENUM ('customer', 'mechanic', 'admin');
+            END IF;
+        END $$;
+    """)
 
-    booking_status_enum = postgresql.ENUM(
-        'REQUESTED',
-        'BROADCASTING',
-        'ACCEPTED',
-        'EN_ROUTE',
-        'IN_PROGRESS',
-        'COMPLETED',
-        'CANCELLED_BY_CUSTOMER',
-        'CANCELLED_BY_MECHANIC',
-        'EXPIRED',
-        name='booking_status_enum',
-        create_type=False
-    )
-    booking_status_enum.create(op.get_bind(), checkfirst=True)
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'booking_status_enum') THEN
+                CREATE TYPE booking_status_enum AS ENUM (
+                    'REQUESTED', 'BROADCASTING', 'ACCEPTED', 'EN_ROUTE', 'IN_PROGRESS',
+                    'COMPLETED', 'CANCELLED_BY_CUSTOMER', 'CANCELLED_BY_MECHANIC', 'EXPIRED'
+                );
+            END IF;
+        END $$;
+    """)
 
     # 1. users table
     op.create_table(
@@ -45,7 +46,7 @@ def upgrade() -> None:
         sa.Column('phone', sa.String(length=20), nullable=False),
         sa.Column('email', sa.String(length=255), nullable=False),
         sa.Column('password_hash', sa.String(length=255), nullable=False),
-        sa.Column('role', sa.Enum('customer', 'mechanic', 'admin', name='user_role_enum'), nullable=False),
+        sa.Column('role', postgresql.ENUM('customer', 'mechanic', 'admin', name='user_role_enum', create_type=False), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     )
@@ -95,10 +96,11 @@ def upgrade() -> None:
         sa.Column('description', sa.Text(), nullable=False),
         sa.Column('customer_lat', sa.Float(), nullable=False),
         sa.Column('customer_lng', sa.Float(), nullable=False),
-        sa.Column('status', sa.Enum(
+        sa.Column('status', postgresql.ENUM(
             'REQUESTED', 'BROADCASTING', 'ACCEPTED', 'EN_ROUTE', 'IN_PROGRESS',
             'COMPLETED', 'CANCELLED_BY_CUSTOMER', 'CANCELLED_BY_MECHANIC', 'EXPIRED',
-            name='booking_status_enum'
+            name='booking_status_enum',
+            create_type=False
         ), nullable=False, server_default='REQUESTED'),
         sa.Column('accepted_mechanic_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='SET NULL'), nullable=True),
         sa.Column('scheduled_at', sa.DateTime(timezone=True), nullable=True),

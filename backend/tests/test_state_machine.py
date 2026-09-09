@@ -41,7 +41,16 @@ async def test_legal_lifecycle_transitions(db_session: AsyncSession, sample_cust
     # IN_PROGRESS -> COMPLETED
     await transition_booking(db_session, booking, BookingStatus.COMPLETED, mechanic_id)
     assert booking.status == BookingStatus.COMPLETED
-    assert len(booking.status_history) == 5
+    await db_session.flush()
+
+    # Verify status history audit records
+    from sqlalchemy import select
+    from app.db.models.booking_history import BookingStatusHistory
+    hist_res = await db_session.execute(
+        select(BookingStatusHistory).where(BookingStatusHistory.booking_id == booking.id)
+    )
+    histories = hist_res.scalars().all()
+    assert len(histories) == 5
 
 @pytest.mark.asyncio
 async def test_illegal_transition_rejection(db_session: AsyncSession, sample_customer: User, sample_category: ServiceCategory):

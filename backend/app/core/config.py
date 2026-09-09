@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # Environment
     LOG_LEVEL: str = "INFO"
     ENVIRONMENT: str = "development"
+    TESTING: bool = False
     API_PORT: int = 8000
     FRONTEND_PORT: int = 5173
 

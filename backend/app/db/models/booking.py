@@ -69,18 +69,18 @@ class Booking(Base, TimestampMixin):
         "User",
         foreign_keys=[customer_id],
         back_populates="customer_bookings",
-        lazy="joined"
+        lazy="selectin"
     )
     category: Mapped["ServiceCategory"] = relationship(
         "ServiceCategory",
         back_populates="bookings",
-        lazy="joined"
+        lazy="selectin"
     )
     accepted_mechanic: Mapped[Optional["User"]] = relationship(
         "User",
         foreign_keys=[accepted_mechanic_id],
         back_populates="assigned_bookings",
-        lazy="joined"
+        lazy="selectin"
     )
     status_history: Mapped[List["BookingStatusHistory"]] = relationship(
         "BookingStatusHistory",

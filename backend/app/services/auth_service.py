@@ -44,10 +44,17 @@ class AuthService:
         )
         db.add(user)
         await db.commit()
-        await db.refresh(user)
+
+        # Reload with relationships
+        reloaded = await db.execute(
+            select(User).where(User.id == user.id).options(
+                selectinload(User.mechanic_profile)
+            )
+        )
+        full_user = reloaded.scalar_one()
 
         logger.info(f"Customer registered: {user.id} ({user.email})", extra={"user_id": user.id, "event": "user_registered"})
-        return UserResponse.model_validate(user)
+        return UserResponse.model_validate(full_user)
 
     @staticmethod
     async def register_mechanic(db: AsyncSession, req: MechanicRegisterRequest) -> UserResponse:
