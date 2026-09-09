@@ -13,7 +13,7 @@ from app.core.exceptions import (
     integrity_error_handler,
     global_exception_handler,
 )
-from app.api.routes import auth, categories, health
+from app.api.routes import auth, categories, health, customer_bookings
 
 # Setup structured logging
 setup_logging()
@@ -53,3 +53,4 @@ app.add_exception_handler(Exception, global_exception_handler)
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(categories.router)
+app.include_router(customer_bookings.router)
